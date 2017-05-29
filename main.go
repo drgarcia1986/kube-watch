@@ -56,7 +56,12 @@ func checkPods(sc *slack.Client) {
 
 	out, err := pipeCmds(kubectlCmd, grepCmd)
 	if err != nil {
-		fmt.Println("error: ", err)
+		msg := fmt.Sprintf(
+			":bomb: Error on check pods status: *%v* - *%s*",
+			err, strings.TrimSpace(string(out)),
+		)
+		propagateMsg(sc, msg)
+		return
 	}
 	pods := cleanOutput(out)
 	if len(pods) == 0 {
@@ -68,9 +73,14 @@ func checkPods(sc *slack.Client) {
 		msg = fmt.Sprintf("%sNamespace: *%s*\nPod: *%s*\nStatus: *%s*\n\n", msg, pod.namespace, pod.name, pod.status)
 	}
 
-	if err = sc.PostMessage(slackChannel, "kube-watch", slackAvatar, msg); err != nil {
+	if err = postMessage(sc, msg); err != nil {
 		fmt.Println("Error on post msg on slack: ", err)
 	}
+}
+
+func propagateMsg(sc *slack.Client, msg string) error {
+	fmt.Println(msg)
+	return postMessage(sc, msg)
 }
 
 func cleanOutput(out []byte) []Pod {
@@ -86,6 +96,10 @@ func cleanOutput(out []byte) []Pod {
 	return pods
 }
 
+func postMessage(sc *slack.Client, msg string) error {
+	return sc.PostMessage(slackChannel, "kube-watch", slackAvatar, msg)
+}
+
 func getCmd(program string, args ...string) *exec.Cmd {
 	return exec.Command(program, args...)
 }
@@ -98,6 +112,8 @@ func pipeCmds(c1, c2 *exec.Cmd) ([]byte, error) {
 	c2.Stdin = in
 
 	var out bytes.Buffer
+	var outErr bytes.Buffer
+	c1.Stderr = &outErr
 	c2.Stdout = &out
 
 	if err := c2.Start(); err != nil {
@@ -105,11 +121,11 @@ func pipeCmds(c1, c2 *exec.Cmd) ([]byte, error) {
 	}
 
 	if err := c1.Run(); err != nil {
-		return nil, err
+		return outErr.Bytes(), err
 	}
 
 	if err := c2.Wait(); err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	return out.Bytes(), nil
