@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: kube-watch
-        image: drgarcia1986/kube-watch:0.0.1
+        image: drgarcia1986/kube-watch:0.0.3
         imagePullPolicy: Always
         env:
         - name: K8SENV
@@ -46,5 +46,3 @@ spec:
 ```
 $ kubectl create -f deployment.yaml
 ```
-
-Inspired on [Kubebot](https://github.com/janetkuo/kubebot)
