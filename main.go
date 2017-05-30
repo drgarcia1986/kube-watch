@@ -116,9 +116,5 @@ func getPodsInCrash(items []k8sv1.Pod) []Pod {
 
 func propagateMsg(sc *slack.Client, msg string) error {
 	fmt.Println(msg)
-	return postMessage(sc, msg)
-}
-
-func postMessage(sc *slack.Client, msg string) error {
 	return sc.PostMessage(slackChannel, "kube-watch", slackAvatar, msg)
 }
