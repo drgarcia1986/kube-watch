@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	k8sv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
@@ -22,7 +21,7 @@ type Default struct {
 }
 
 func (d *Default) List(namespace string) ([]Pod, error) {
-	podList, err := d.k.CoreV1().Pods("").List(metav1.ListOptions{})
+	podList, err := d.k.CoreV1().Pods("").List(k8sv1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
