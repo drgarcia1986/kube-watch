@@ -14,6 +14,7 @@ type Pod struct {
 
 type Client interface {
 	List(namespace string) ([]Pod, error)
+	GetLabelValue(namespace, label string) (string, error)
 }
 
 type Default struct {
@@ -28,17 +29,23 @@ func (d *Default) List(namespace string) ([]Pod, error) {
 	return convertPodList(podList.Items), nil
 }
 
+func (d *Default) GetLabelValue(namespace, label string) (string, error) {
+	ns, err := d.k.CoreV1().Namespaces().Get(namespace)
+	if err != nil {
+		return "", nil
+	}
+	return ns.Labels[label], nil
+}
+
 func convertPodList(items []k8sv1.Pod) []Pod {
 	pods := make([]Pod, 0)
 	for _, pod := range items {
 		for _, status := range pod.Status.ContainerStatuses {
-			var state string
+			state := "Running"
 			if status.State.Waiting != nil {
 				state = status.State.Waiting.Reason
 			} else if status.State.Terminated != nil {
 				state = status.State.Terminated.Reason
-			} else {
-				state = "Running"
 			}
 			pods = append(pods, Pod{
 				Name:      pod.Name,

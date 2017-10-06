@@ -31,17 +31,21 @@ func (kw *KubeWatch) checkPods() {
 		return
 	}
 
-	podsInCrash := getPodsInCrash(podList)
+	podsInCrash := groupByNamespaceAndFilterCrasheds(podList)
 	if len(podsInCrash) == 0 {
 		return
 	}
 
 	msg := fmt.Sprintf(":shit: *PODS IN CRASH* on _%s_:\n\n", kw.k8sEnv)
-	for _, pod := range podsInCrash {
+	for ns, pods := range podsInCrash {
+		team, err := kw.k.GetLabelValue(ns, "teresa.io/team")
+		if err != nil {
+			kw.propagateMsg(fmt.Sprintf(":bomb: Error getting namespace label: *%v*", err))
+			return
+		}
 		msg = fmt.Sprintf(
-			"%sNamespace: *%s*\nPod: *%s*\nStatus: *%s*\n\n",
-			msg, pod.Namespace, pod.Name, pod.Status,
-		)
+			"%s*%s*: (@%s) *%d* Pod(s) in CrashLoopBackOff\n",
+			msg, ns, team, len(pods))
 	}
 
 	if err = kw.propagateMsg(msg); err != nil {
@@ -54,14 +58,18 @@ func (kw *KubeWatch) propagateMsg(msg string) error {
 	return kw.n.PostMessage(msg)
 }
 
-func getPodsInCrash(items []k8s.Pod) []k8s.Pod {
-	podsInCrash := make([]k8s.Pod, 0)
+func groupByNamespaceAndFilterCrasheds(items []k8s.Pod) map[string][]k8s.Pod {
+	result := make(map[string][]k8s.Pod)
 	for _, pod := range items {
-		if pod.Status == "CrashLoopBackOff" {
-			podsInCrash = append(podsInCrash, pod)
+		if pod.Status != "CrashLoopBackOff" {
+			continue
 		}
+		if result[pod.Namespace] == nil {
+			result[pod.Namespace] = make([]k8s.Pod, 0)
+		}
+		result[pod.Namespace] = append(result[pod.Namespace], pod)
 	}
-	return podsInCrash
+	return result
 }
 
 func New(k k8s.Client, n notification.Notification, circleTime int, k8sEnv string) *KubeWatch {
