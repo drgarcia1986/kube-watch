@@ -12,14 +12,18 @@ import (
 	"github.com/drgarcia1986/kube-watch/kw/notification"
 )
 
-const defaultTimeCircle = 5
+const (
+	defaultTimeCircle        = 5
+	defaultNotReadyThreshold = 60
+)
 
 var (
-	k8sEnv       string = os.Getenv("K8SENV")
-	slackAvatar  string = os.Getenv("SLACKAVATAR")
-	slackToken   string = os.Getenv("SLACKTOKEN")
-	slackChannel string = os.Getenv("SLACKCHANNEL")
-	circleTime   string = os.Getenv("CIRCLETIME")
+	k8sEnv            string = os.Getenv("K8SENV")
+	slackAvatar       string = os.Getenv("SLACKAVATAR")
+	slackToken        string = os.Getenv("SLACKTOKEN")
+	slackChannel      string = os.Getenv("SLACKCHANNEL")
+	circleTime        string = os.Getenv("CIRCLETIME")
+	notReadyThreshold string = os.Getenv("NOT_READY_THRESHOLD")
 )
 
 func main() {
@@ -41,10 +45,16 @@ func main() {
 		ct = defaultTimeCircle
 	}
 
+	nrt, err := strconv.Atoi(notReadyThreshold)
+	if err != nil {
+		fmt.Printf("Using default threshold for not ready pods: %d\n", defaultNotReadyThreshold)
+		nrt = defaultNotReadyThreshold
+	}
+
 	quit := make(chan os.Signal, 2)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	kubeWatch := kw.New(k8sClient, nf, ct, k8sEnv)
+	kubeWatch := kw.New(k8sClient, nf, ct, nrt, k8sEnv)
 	go kubeWatch.Run()
 
 	<-quit

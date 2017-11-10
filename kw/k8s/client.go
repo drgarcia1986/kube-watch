@@ -10,6 +10,7 @@ type Pod struct {
 	Name      string
 	Namespace string
 	Status    string
+	Ready     bool
 }
 
 type Client interface {
@@ -50,7 +51,8 @@ func convertPodList(items []k8sv1.Pod) []Pod {
 			pods = append(pods, Pod{
 				Name:      pod.Name,
 				Namespace: pod.Namespace,
-				Status:    state})
+				Status:    state,
+				Ready:     status.Ready})
 		}
 	}
 	return pods
